@@ -2098,6 +2098,9 @@ impl ClientShellState {
                     self.persist_chrome_preferences(outcome);
                     return;
                 }
+                if self.press_sidebar_tab(point, outcome) {
+                    return;
+                }
                 let workspace_press = self
                     .hits
                     .workspaces

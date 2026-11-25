@@ -889,6 +889,7 @@ impl ClientShellState {
                 self.overlay = None;
                 self.mode = ClientShellMode::Navigate;
                 self.navigate_workspace_id = self.focused_navigation_target();
+                self.start_sidebar_tab_navigation();
                 self.reveal_navigation_workspace = true;
                 outcome.repaint = true;
             }

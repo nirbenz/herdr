@@ -1085,6 +1085,17 @@
           "description": "Blank terminal rows between worktree groups and unrelated top-level Spaces. Worktree parents and their indented children remain packed."
         },
         {
+          "key": "ui.sidebar.spaces.tabs",
+          "type": "enum",
+          "default": "\"off\"",
+          "description": "List tabs as tree rows under their Space in the expanded sidebar. active shows the focused Space's tabs; all shows every Space with two or more tabs. Tab rows can be clicked and are reachable from workspace navigation.",
+          "values": [
+            "off",
+            "active",
+            "all"
+          ]
+        },
+        {
           "key": "ui.sidebar.spaces.rows",
           "type": "list of token rows",
           "default": "[[\"state_icon\", \"workspace\"], [\"branch\", \"git_status\"]]",

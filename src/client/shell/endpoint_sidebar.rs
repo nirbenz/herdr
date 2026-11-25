@@ -314,8 +314,15 @@ pub(super) fn render_expanded(
                     .as_deref()
                     .and_then(|snapshot| {
                         let workspace = snapshot.workspaces.get(entry.index)?;
+                        let tabs = super::sidebar_tabs::sidebar_tabs(
+                            snapshot,
+                            workspace,
+                            config.spaces.tabs,
+                            &endpoint.endpoint_id == state.active_endpoint_id,
+                        )
+                        .len();
                         Some(
-                            super::sidebar::workspace_rows(
+                            (super::sidebar::workspace_rows(
                                 workspace,
                                 super::sidebar::displayed_workspace_status(
                                     snapshot,
@@ -327,7 +334,8 @@ pub(super) fn render_expanded(
                             )
                             .len()
                             .max(1)
-                            .min(u16::MAX as usize) as u16,
+                                + tabs)
+                                .min(u16::MAX as usize) as u16,
                         )
                     })
                     .unwrap_or(1)
@@ -453,10 +461,20 @@ pub(super) fn render_expanded(
                     entry.indented,
                     &config.spaces,
                 );
-                let height = (tokens.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
-                if y.saturating_add(height) > body.bottom() {
+                let endpoint_active = &endpoint.endpoint_id == state.active_endpoint_id;
+                let tabs = super::sidebar_tabs::sidebar_tabs(
+                    snapshot,
+                    workspace,
+                    config.spaces.tabs,
+                    endpoint_active,
+                );
+                let block_height = ((tokens.len().max(1) + tabs.len()).min(u16::MAX as usize)
+                    as u16)
+                    .min(body.height);
+                if y.saturating_add(block_height) > body.bottom() {
                     break;
                 }
+                let height = (tokens.len().max(1) as u16).min(block_height);
                 let rect = Rect::new(body.x, y, content_width, height);
                 let nested = Rect::new(
                     rect.x.saturating_add(2),
@@ -464,10 +482,10 @@ pub(super) fn render_expanded(
                     rect.width.saturating_sub(2),
                     rect.height,
                 );
-                let endpoint_active = &endpoint.endpoint_id == state.active_endpoint_id;
-                let selected = state.selected_workspace_id.is_some_and(|target| {
-                    target.matches(&endpoint.endpoint_id, &workspace.workspace_id)
-                });
+                let selected = state.selected_tab_id.is_none()
+                    && state.selected_workspace_id.is_some_and(|target| {
+                        target.matches(&endpoint.endpoint_id, &workspace.workspace_id)
+                    });
                 super::sidebar::render_workspace_rows(
                     buffer,
                     nested,
@@ -504,8 +522,28 @@ pub(super) fn render_expanded(
                     indented: entry.indented,
                     group_toggle,
                 });
+                let tab_area = Rect::new(nested.x, y + height, nested.width, block_height - height);
+                super::sidebar_tabs::render_sidebar_tabs(
+                    buffer,
+                    tab_area,
+                    &tabs,
+                    entry,
+                    &endpoint.endpoint_id,
+                    endpoint_active,
+                    state.selected_tab_id,
+                    config,
+                    hits,
+                );
+                if endpoint.status != ClientEndpointStatus::Online {
+                    buffer.set_style(
+                        tab_area,
+                        Style::default()
+                            .fg(palette.overlay0)
+                            .add_modifier(Modifier::DIM),
+                    );
+                }
                 y = y
-                    .saturating_add(height)
+                    .saturating_add(block_height)
                     .saturating_add(gaps.get(row_index).copied().unwrap_or(0));
             }
         }

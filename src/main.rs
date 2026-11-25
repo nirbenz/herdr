@@ -364,6 +364,8 @@ const DEFAULT_CONFIG: &str = r##"# herdr configuration
 # Blank rows between space entries. Set to 1 to restore the previous spacing.
 # row_gap = 0
 # rows = [["state_icon", "workspace"], ["branch", "git_status"]]
+# List tabs under their space: off, active (focused space only), or all.
+# tabs = "off"
 
 # Background notification popup delivery
 [ui.toast]

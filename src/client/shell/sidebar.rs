@@ -1,10 +1,13 @@
 use super::*;
+use crate::client::shell::sidebar_tabs::{render_sidebar_tabs, sidebar_tabs};
 use ratatui::{
     text::Line,
     widgets::{Paragraph, Widget},
 };
 
-fn workspace_selection_background(palette: &Palette) -> ratatui::style::Color {
+pub(in crate::client::shell) fn workspace_selection_background(
+    palette: &Palette,
+) -> ratatui::style::Color {
     if palette.selection_bg == ratatui::style::Color::Reset {
         palette.active_row_bg
     } else {
@@ -243,7 +246,8 @@ pub(crate) fn render_sidebar(
                 .workspaces
                 .get(entry.index)
                 .map(|workspace| {
-                    workspace_rows(
+                    let tabs = sidebar_tabs(snapshot, workspace, config.spaces.tabs, true).len();
+                    (workspace_rows(
                         workspace,
                         displayed_workspace_status(snapshot, workspace, state.collapsed_groups),
                         entry.indented,
@@ -251,7 +255,8 @@ pub(crate) fn render_sidebar(
                     )
                     .len()
                     .max(1)
-                    .min(u16::MAX as usize) as u16
+                        + tabs)
+                        .min(u16::MAX as usize) as u16
                 })
                 .unwrap_or(1)
         })
@@ -305,14 +310,18 @@ pub(crate) fn render_sidebar(
         };
         let status = displayed_workspace_status(snapshot, workspace, state.collapsed_groups);
         let rows = workspace_rows(workspace, status, entry.indented, &config.spaces);
-        let row_height = (rows.len().max(1).min(u16::MAX as usize) as u16).min(body.height);
-        if y.saturating_add(row_height) > body.bottom() {
+        let tabs = sidebar_tabs(snapshot, workspace, config.spaces.tabs, true);
+        let block_height =
+            ((rows.len().max(1) + tabs.len()).min(u16::MAX as usize) as u16).min(body.height);
+        if y.saturating_add(block_height) > body.bottom() {
             break;
         }
+        let row_height = (rows.len().max(1) as u16).min(block_height);
         let rect = Rect::new(body.x, y, content_width, row_height);
-        let selected = state.selected_workspace_id.is_some_and(|target| {
-            target.matches(state.active_endpoint_id, &workspace.workspace_id)
-        });
+        let selected = state.selected_tab_id.is_none()
+            && state.selected_workspace_id.is_some_and(|target| {
+                target.matches(state.active_endpoint_id, &workspace.workspace_id)
+            });
         let dragged = state.dragged_workspace_id == Some(workspace.workspace_id.as_str());
         if selected {
             buffer.set_style(rect, Style::default().bg(palette.selection_bg));
@@ -349,10 +358,26 @@ pub(crate) fn render_sidebar(
             indented: entry.indented,
             group_toggle,
         });
+        render_sidebar_tabs(
+            buffer,
+            Rect::new(
+                body.x,
+                y + row_height,
+                content_width,
+                block_height - row_height,
+            ),
+            &tabs,
+            entry,
+            &ClientEndpointId::Local,
+            true,
+            state.selected_tab_id,
+            config,
+            hits,
+        );
         let gap = entries
             .get(entry_position + 1)
             .map_or(0, |next| u16::from(!next.indented) * config.spaces.row_gap);
-        y = y.saturating_add(row_height + gap);
+        y = y.saturating_add(block_height + gap);
     }
 
     if show_scrollbar {

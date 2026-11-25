@@ -54,6 +54,10 @@ impl ClientShellState {
                 && self.endpoint_status(&self.active_endpoint_id)
                     == Some(ClientEndpointStatus::Online)
         });
+        let selected_tab_id = self
+            .navigate_sidebar_tab_id()
+            .filter(|_| valid_navigation_target)
+            .map(str::to_owned);
         let mut render_state = render::ShellRenderState {
             machine_diagnostics: &self.machine_diagnostics,
             endpoints: &self.endpoints,
@@ -74,6 +78,7 @@ impl ClientShellState {
                 .as_ref()
                 .filter(|_| valid_navigation_target)
                 .or_else(|| pending_workspace_highlight.map(|pending| &pending.target)),
+            selected_tab_id: selected_tab_id.as_deref(),
             reveal_navigation_workspace: &mut self.reveal_navigation_workspace,
             dragged_workspace_id: None,
             workspace_drop_indicator_row: None,
@@ -204,6 +209,10 @@ impl ClientShellState {
             ),
             _ => (None, None),
         };
+        let selected_tab_id = self
+            .navigate_sidebar_tab_id()
+            .filter(|_| valid_navigation_target)
+            .map(str::to_owned);
         let mut buffer = Buffer::empty(Rect::new(0, 0, cols, rows));
         self.hits = render::render_shell(
             &mut buffer,
@@ -230,6 +239,7 @@ impl ClientShellState {
                     .as_ref()
                     .filter(|_| valid_navigation_target)
                     .or_else(|| pending_workspace_highlight.map(|pending| &pending.target)),
+                selected_tab_id: selected_tab_id.as_deref(),
                 reveal_navigation_workspace: &mut self.reveal_navigation_workspace,
                 dragged_workspace_id,
                 workspace_drop_indicator_row,

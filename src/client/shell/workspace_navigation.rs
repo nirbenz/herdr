@@ -128,22 +128,37 @@ impl ClientShellState {
                 };
                 render::workspace_entries(snapshot, collapsed_groups)
             };
+            let tree_rows = !(mobile || (self.sidebar_collapsed && surface_available));
             for entry in entries {
-                targets.push(WorkspaceNavigationTarget {
+                let workspace = &snapshot.workspaces[entry.index];
+                let target = WorkspaceNavigationTarget {
                     endpoint_id: endpoint.endpoint_id.clone(),
-                    workspace_id: snapshot.workspaces[entry.index].workspace_id.clone(),
+                    workspace_id: workspace.workspace_id.clone(),
                     boot_id: snapshot.boot_id.clone(),
                     generation: endpoint.snapshot_generation,
-                });
+                };
+                let tab_ids = if tree_rows {
+                    self.sidebar_tab_navigation_ids(&endpoint.endpoint_id, snapshot, workspace)
+                } else {
+                    Vec::new()
+                };
+                targets.push((target.clone(), None));
+                targets.extend(
+                    tab_ids
+                        .into_iter()
+                        .map(|tab_id| (target.clone(), Some(tab_id))),
+                );
             }
         }
         if targets.is_empty() {
             return;
         }
-        let current = self
-            .navigate_workspace_id
-            .as_ref()
-            .and_then(|selected| targets.iter().position(|target| target == selected));
+        let selected_tab = self.navigate_sidebar_tab_id();
+        let current = self.navigate_workspace_id.as_ref().and_then(|selected| {
+            targets.iter().position(|(target, tab_id)| {
+                target == selected && tab_id.as_deref() == selected_tab
+            })
+        });
         let next = match current {
             Some(current) if mobile => {
                 (current as isize + delta).clamp(0, targets.len() as isize - 1) as usize
@@ -152,7 +167,8 @@ impl ClientShellState {
             None if delta < 0 => targets.len() - 1,
             None => 0,
         };
-        let target = targets.swap_remove(next);
+        let (target, tab_id) = targets.swap_remove(next);
+        self.navigate_sidebar_tab = tab_id.map(|tab_id| (target.clone(), tab_id));
         self.collapsed_endpoints.remove(&target.endpoint_id);
         if self.endpoints.len() == 1 && !mobile {
             self.reveal_workspace(&target.workspace_id);
@@ -174,6 +190,9 @@ impl ClientShellState {
                 "Workspace is no longer available; select a connected workspace".into(),
             );
             outcome.repaint = true;
+            return;
+        }
+        if self.accept_navigate_sidebar_tab(outcome) {
             return;
         }
         let action_index = outcome.actions.len();

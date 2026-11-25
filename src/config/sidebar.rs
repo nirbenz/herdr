@@ -455,12 +455,23 @@ impl Default for AgentsSidebarConfig {
     }
 }
 
+/// Which workspaces list their tabs as tree rows in the expanded sidebar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SidebarTabsMode {
+    #[default]
+    Off,
+    Active,
+    All,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct SpacesSidebarConfig {
     #[serde(deserialize_with = "deserialize_sidebar_rows")]
     pub rows: SpaceSidebarRows,
     pub row_gap: u16,
+    pub tabs: SidebarTabsMode,
 }
 
 impl Default for SpacesSidebarConfig {
@@ -471,6 +482,7 @@ impl Default for SpacesSidebarConfig {
                 vec![SpaceSidebarToken::Branch, SpaceSidebarToken::GitStatus],
             ],
             row_gap: DEFAULT_SIDEBAR_ROW_GAP,
+            tabs: SidebarTabsMode::Off,
         }
     }
 }
